@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Great Owl Marketing</title>
+  <meta name="description" content="Marketing insights and exclusive offers — straight to your inbox.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --gold:    #c9a84c;
+      --gold-lt: #e4c97e;
+      --dark:    #0f0e0c;
+      --dark2:   #1a1814;
+      --mid:     #2e2b26;
+      --cream:   #f5f0e8;
+      --muted:   #7a7265;
+      --white:   #ffffff;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--dark);
+      color: var(--cream);
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 300;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Noise texture overlay ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.6;
+    }
+
+    /* ── Radial glow ── */
+    body::after {
+      content: '';
+      position: fixed;
+      top: -20%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 800px;
+      height: 600px;
+      background: radial-gradient(ellipse, rgba(201,168,76,0.12) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Layout ── */
+    .page {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+    }
+
+    /* ── Nav ── */
+    nav {
+      padding: 28px 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(201,168,76,0.15);
+      animation: fadeDown 0.8s ease both;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+    }
+
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      position: relative;
+    }
+
+    .logo-text {
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 500;
+      font-size: 14px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--cream);
+    }
+
+    .logo-text span {
+      color: var(--gold);
+    }
+
+    nav .tagline {
+      font-size: 12px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    /* ── Hero ── */
+    .hero {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 80px 24px 60px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 11px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 32px;
+      animation: fadeUp 0.8s 0.2s ease both;
+    }
+
+    .eyebrow::before,
+    .eyebrow::after {
+      content: '';
+      display: block;
+      width: 40px;
+      height: 1px;
+      background: var(--gold);
+      opacity: 0.5;
+    }
+
+    h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(42px, 7vw, 88px);
+      font-weight: 900;
+      line-height: 1.0;
+      letter-spacing: -1px;
+      max-width: 820px;
+      margin-bottom: 28px;
+      animation: fadeUp 0.8s 0.35s ease both;
+    }
+
+    h1 em {
+      font-style: italic;
+      color: var(--gold);
+    }
+
+    .subhead {
+      font-size: clamp(15px, 2vw, 18px);
+      line-height: 1.7;
+      color: var(--muted);
+      max-width: 520px;
+      margin-bottom: 52px;
+      animation: fadeUp 0.8s 0.5s ease both;
+    }
+
+    /* ── Form ── */
+    .form-wrap {
+      width: 100%;
+      max-width: 460px;
+      animation: fadeUp 0.8s 0.65s ease both;
+    }
+
+    .form-row {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .input-group {
+      position: relative;
+    }
+
+    input[type="text"],
+    input[type="email"] {
+      width: 100%;
+      padding: 16px 20px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(201,168,76,0.2);
+      border-radius: 3px;
+      color: var(--cream);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      font-weight: 300;
+      outline: none;
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    input::placeholder { color: var(--muted); }
+
+    input:focus {
+      border-color: var(--gold);
+      background: rgba(201,168,76,0.06);
+    }
+
+    button[type="submit"] {
+      width: 100%;
+      padding: 17px 32px;
+      background: var(--gold);
+      color: var(--dark);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.15s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    button[type="submit"]:hover {
+      background: var(--gold-lt);
+      transform: translateY(-1px);
+    }
+
+    button[type="submit"]:active { transform: translateY(0); }
+
+    button[type="submit"].loading {
+      opacity: 0.7;
+      pointer-events: none;
+    }
+
+    button[type="submit"].loading::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.2) 50%, transparent 100%);
+      animation: shimmer 1.2s infinite;
+    }
+
+    .privacy-note {
+      margin-top: 14px;
+      font-size: 11px;
+      letter-spacing: 0.5px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    /* ── Status messages ── */
+    .status {
+      margin-top: 16px;
+      padding: 14px 20px;
+      border-radius: 3px;
+      font-size: 14px;
+      text-align: center;
+      display: none;
+    }
+
+    .status.success {
+      display: block;
+      background: rgba(201,168,76,0.12);
+      border: 1px solid rgba(201,168,76,0.3);
+      color: var(--gold-lt);
+    }
+
+    .status.error {
+      display: block;
+      background: rgba(200,80,60,0.1);
+      border: 1px solid rgba(200,80,60,0.3);
+      color: #e8a090;
+    }
+
+    /* ── Social proof ── */
+    .proof {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-top: 48px;
+      animation: fadeUp 0.8s 0.8s ease both;
+    }
+
+    .proof-avatars {
+      display: flex;
+    }
+
+    .proof-avatars span {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: 2px solid var(--dark);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      margin-left: -8px;
+      background: var(--mid);
+      color: var(--gold);
+    }
+
+    .proof-avatars span:first-child { margin-left: 0; }
+
+    .proof-text {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    .proof-text strong {
+      display: block;
+      color: var(--cream);
+      font-weight: 500;
+    }
+
+    /* ── Benefits strip ── */
+    .benefits {
+      display: flex;
+      justify-content: center;
+      gap: 0;
+      flex-wrap: wrap;
+      border-top: 1px solid rgba(201,168,76,0.1);
+      border-bottom: 1px solid rgba(201,168,76,0.1);
+      animation: fadeUp 0.8s 0.95s ease both;
+    }
+
+    .benefit {
+      padding: 28px 40px;
+      text-align: center;
+      flex: 1;
+      min-width: 180px;
+      border-right: 1px solid rgba(201,168,76,0.1);
+      transition: background 0.2s;
+    }
+
+    .benefit:last-child { border-right: none; }
+    .benefit:hover { background: rgba(201,168,76,0.04); }
+
+    .benefit-icon {
+      font-size: 22px;
+      margin-bottom: 10px;
+    }
+
+    .benefit-title {
+      font-size: 12px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+
+    .benefit-desc {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    /* ── Footer ── */
+    footer {
+      padding: 24px 48px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px solid rgba(201,168,76,0.1);
+      font-size: 12px;
+      color: var(--muted);
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    footer a {
+      color: var(--muted);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    footer a:hover { color: var(--gold); }
+
+    /* ── Owl SVG ── */
+    .owl-mark {
+      position: fixed;
+      bottom: 60px;
+      right: 60px;
+      opacity: 0.04;
+      width: 220px;
+      pointer-events: none;
+      z-index: 0;
+      animation: slowSpin 40s linear infinite;
+    }
+
+    /* ── Animations ── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeDown {
+      from { opacity: 0; transform: translateY(-16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes shimmer {
+      from { transform: translateX(-100%); }
+      to   { transform: translateX(100%); }
+    }
+
+    @keyframes slowSpin {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(360deg); }
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      nav { padding: 20px 24px; }
+      nav .tagline { display: none; }
+      .hero { padding: 60px 20px 40px; }
+      .benefits { flex-direction: column; }
+      .benefit { border-right: none; border-bottom: 1px solid rgba(201,168,76,0.1); }
+      .benefit:last-child { border-bottom: none; }
+      footer { justify-content: center; text-align: center; }
+      .owl-mark { width: 120px; bottom: 20px; right: 20px; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Nav -->
+  <nav>
+    <a href="/" class="logo">
+      <!-- Inline owl SVG mark -->
+      <svg class="logo-icon" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="18" cy="18" r="17" stroke="#c9a84c" stroke-width="1.5" opacity="0.4"/>
+        <ellipse cx="18" cy="20" rx="9" ry="10" fill="#c9a84c" opacity="0.15"/>
+        <circle cx="14" cy="16" r="4" fill="none" stroke="#c9a84c" stroke-width="1.5"/>
+        <circle cx="22" cy="16" r="4" fill="none" stroke="#c9a84c" stroke-width="1.5"/>
+        <circle cx="14" cy="16" r="1.5" fill="#c9a84c"/>
+        <circle cx="22" cy="16" r="1.5" fill="#c9a84c"/>
+        <path d="M15 22 Q18 24 21 22" stroke="#c9a84c" stroke-width="1.2" stroke-linecap="round" fill="none"/>
+        <path d="M15 10 L13 7 M21 10 L23 7" stroke="#c9a84c" stroke-width="1.2" stroke-linecap="round"/>
+      </svg>
+      <span class="logo-text">Great <span>Owl</span> Marketing</span>
+    </a>
+    <span class="tagline">Marketing That Works</span>
+  </nav>
+
+  <!-- Hero -->
+  <main class="hero">
+    <div class="eyebrow">Join the List</div>
+
+    <h1>Marketing that <em>actually</em><br>moves the needle.</h1>
+
+    <p class="subhead">
+      Get proven strategies, real insights, and exclusive offers from Great Owl Marketing — delivered straight to your inbox. No fluff. No spam.
+    </p>
+
+    <div class="form-wrap">
+      <form class="form-row" id="subscribe-form" novalidate>
+        <input
+          type="text"
+          name="first_name"
+          placeholder="First name"
+          autocomplete="given-name"
+        >
+        <input
+          type="email"
+          name="email"
+          placeholder="Your email address"
+          required
+          autocomplete="email"
+        >
+        <button type="submit" id="submit-btn">
+          Join the List
+        </button>
+      </form>
+
+      <div class="privacy-note">No spam, ever. Unsubscribe in one click.</div>
+      <div class="status" id="status-msg"></div>
+    </div>
+
+    <!-- Social proof -->
+    <div class="proof">
+      <div class="proof-avatars">
+        <span>A</span><span>B</span><span>C</span><span>D</span>
+      </div>
+      <div class="proof-text">
+        <strong>Join our subscribers</strong>
+        Getting real marketing insights every week
+      </div>
+    </div>
+  </main>
+
+  <!-- Benefits strip -->
+  <section class="benefits">
+    <div class="benefit">
+      <div class="benefit-icon">📈</div>
+      <div class="benefit-title">Growth Strategies</div>
+      <div class="benefit-desc">Proven tactics to grow your audience and revenue</div>
+    </div>
+    <div class="benefit">
+      <div class="benefit-icon">🎯</div>
+      <div class="benefit-title">Exclusive Offers</div>
+      <div class="benefit-desc">Subscriber-only deals on our products and services</div>
+    </div>
+    <div class="benefit">
+      <div class="benefit-icon">🦉</div>
+      <div class="benefit-title">Real Insights</div>
+      <div class="benefit-desc">What's working right now — not recycled theory</div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <span>© 2026 Great Owl Marketing</span>
+    <span>greatowlmarketing.com</span>
+  </footer>
+</div>
+
+<!-- Background owl watermark -->
+<svg class="owl-mark" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <ellipse cx="50" cy="55" rx="28" ry="32" fill="white"/>
+  <circle cx="37" cy="42" r="12" fill="none" stroke="white" stroke-width="3"/>
+  <circle cx="63" cy="42" r="12" fill="none" stroke="white" stroke-width="3"/>
+  <circle cx="37" cy="42" r="5" fill="white"/>
+  <circle cx="63" cy="42" r="5" fill="white"/>
+  <path d="M40 62 Q50 68 60 62" stroke="white" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+  <path d="M38 26 L32 16 M62 26 L68 16" stroke="white" stroke-width="3" stroke-linecap="round"/>
+</svg>
+
+<script>
+  const form = document.getElementById('subscribe-form');
+  const btn  = document.getElementById('submit-btn');
+  const msg  = document.getElementById('status-msg');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const email     = form.email.value.trim();
+    const firstName = form.first_name.value.trim();
+
+    if (!email) {
+      showStatus('error', 'Please enter your email address.');
+      return;
+    }
+
+    btn.textContent = 'Joining...';
+    btn.classList.add('loading');
+    msg.className = 'status';
+    msg.style.display = 'none';
+
+    try {
+      const res = await fetch('/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, first_name: firstName, source: 'landing_page' }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        showStatus('success', data.message || "You're on the list! Check your inbox. 🦉");
+        form.reset();
+        btn.textContent = '✓ You\'re In';
+        btn.style.background = '#2a5c3f';
+        btn.style.color = '#fff';
+      } else {
+        showStatus('error', data.error || 'Something went wrong. Please try again.');
+        btn.textContent = 'Join the List';
+        btn.classList.remove('loading');
+      }
+    } catch (err) {
+      showStatus('error', 'Network error. Please try again.');
+      btn.textContent = 'Join the List';
+      btn.classList.remove('loading');
+    }
+  });
+
+  function showStatus(type, text) {
+    msg.className = `status ${type}`;
+    msg.textContent = text;
+    msg.style.display = 'block';
+  }
+</script>
+</body>
+</html>

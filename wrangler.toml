@@ -1,0 +1,24 @@
+name = "greatowl-email"
+main = "src/index.js"
+compatibility_date = "2024-09-23"
+
+# ─── Static site (your landing page) ───────────────────────────────────────────
+[site]
+bucket = "./public"
+
+# ─── D1 Database binding ────────────────────────────────────────────────────────
+[[d1_databases]]
+binding  = "DB"
+database_name = "greatowl-email-db"
+database_id   = "80616e79-f93e-4f40-a121-f503511f07d7"  # fill after: wrangler d1 create greatowl-email-db
+
+# ─── Environment variables (non-secret) ────────────────────────────────────────
+[vars]
+FROM_EMAIL   = "hello@greatowlmarketing.com"
+FROM_NAME    = "Great Owl Marketing"
+SITE_URL     = "https://greatowlmarketing.com"
+
+# ─── Secrets (set via CLI, never in this file) ─────────────────────────────────
+# wrangler secret put RESEND_API_KEY
+# wrangler secret put CLAUDE_API_KEY
+# wrangler secret put UNSUBSCRIBE_SECRET  (any random string you choose)
