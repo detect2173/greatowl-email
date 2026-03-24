@@ -3,8 +3,8 @@ main = "src/index.js"
 compatibility_date = "2024-09-23"
 
 # ─── Static site (your landing page) ───────────────────────────────────────────
-[site]
-bucket = "./public"
+[assets]
+directory = "./public"
 
 # ─── D1 Database binding ────────────────────────────────────────────────────────
 [[d1_databases]]

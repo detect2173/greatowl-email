@@ -254,6 +254,7 @@ Requirements:
 - Tell them what to expect (marketing insights, product updates, exclusive offers)
 - End with a clear, encouraging call to action to reply and say hi
 - NO subject line — just the body
+- Sign off with "Warmly," followed by "John" and "Great Owl Marketing" on separate lines. Never use placeholder text like [Your name].
 - Plain text only (no markdown, no HTML tags)`,
           },
         ],
