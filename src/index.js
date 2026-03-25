@@ -38,6 +38,10 @@ export default {
       return handleUnsubscribe(request, env);
     }
 
+    if (request.method === "GET" && url.pathname === "/recommends/systeme") {
+      return Response.redirect("https://systeme.io/?sa=sa00434165389d6671287c296be0b041826abd23d5", 302);
+    }
+
     if (request.method === "POST" && url.pathname === "/broadcast") {
       return handleBroadcast(request, env);
     }

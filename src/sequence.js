@@ -7,8 +7,8 @@
 // To deploy: add this file to your project, import in index.js
 // ============================================================
 
-const SYSTEME_AFFILIATE_LINK = "REPLACE_WITH_YOUR_SYSTEME_LINK";
-const CANVA_AFFILIATE_LINK = "REPLACE_WITH_CANVA_LINK_WHEN_APPROVED";
+const SYSTEME_AFFILIATE_LINK = "https://greatowlmarketing.com/recommends/systeme";
+
 
 export const sequence = [
   {
