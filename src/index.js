@@ -51,7 +51,10 @@ export default {
     }
 
     // Serve static assets (landing page)
-    return env.ASSETS.fetch(request);
+    if (env.ASSETS) {
+      return env.ASSETS.fetch(request);
+    }
+    return new Response('Not found', { status: 404 });
   },
 };
 
