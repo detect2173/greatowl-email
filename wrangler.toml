@@ -22,3 +22,5 @@ SITE_URL     = "https://greatowlmarketing.com"
 # wrangler secret put RESEND_API_KEY
 # wrangler secret put CLAUDE_API_KEY
 # wrangler secret put UNSUBSCRIBE_SECRET  (any random string you choose)
+[triggers]
+crons = ["0 9 * * *"]

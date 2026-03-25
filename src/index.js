@@ -1,3 +1,4 @@
+import { sequence } from './sequence.js';
 /**
  * Great Owl Marketing — Cloudflare Worker
  *
@@ -18,6 +19,10 @@ const CORS_HEADERS = {
 // ─── Router ──────────────────────────────────────────────────────────────────
 
 export default {
+  async scheduled(event, env, ctx) {
+    await runSequence(env);
+  },
+
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
@@ -418,4 +423,63 @@ async function generateToken(email, secret) {
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("")
     .slice(0, 32);
+}
+// ─── Sequence Cron ────────────────────────────────────────────────────────────
+
+async function runSequence(env) {
+  const { results: subscribers } = await env.DB.prepare(
+      "SELECT id, email, first_name, subscribed_at FROM subscribers WHERE status='active'"
+  ).all();
+
+  for (const subscriber of subscribers) {
+    const subscribedAt = new Date(subscriber.subscribed_at);
+    const now = new Date();
+    const daysSinceSubscribed = Math.floor(
+        (now - subscribedAt) / (1000 * 60 * 60 * 24)
+    );
+
+    for (const email of sequence) {
+      if (daysSinceSubscribed < email.day) continue;
+
+      const alreadySent = await env.DB.prepare(
+          "SELECT id FROM sequence_log WHERE subscriber_id=? AND day=?"
+      ).bind(subscriber.id, email.day).first();
+
+      if (alreadySent) continue;
+
+      const name = subscriber.first_name || 'there';
+      const token = await generateToken(subscriber.email, env.UNSUBSCRIBE_SECRET);
+      const unsubUrl = `${env.SITE_URL}/unsubscribe?email=${encodeURIComponent(subscriber.email)}&token=${token}`;
+
+      const text = email.text.replace(/{first_name}/g, name);
+      const htmlBody = text
+          .split('\n\n')
+          .map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`)
+          .join('');
+
+      const html = emailTemplate({
+        preheader: email.subject,
+        body: htmlBody,
+        unsubUrl,
+      });
+
+      const ok = await sendViaResend({
+        to: subscriber.email,
+        subject: email.subject,
+        html,
+        text,
+        env,
+      });
+
+      if (ok) {
+        await env.DB.prepare(
+            "INSERT INTO sequence_log (subscriber_id, day) VALUES (?, ?)"
+        ).bind(subscriber.id, email.day).run();
+
+        await env.DB.prepare(
+            "INSERT INTO email_log (subscriber_id, email, subject, type) VALUES (?, ?, ?, 'sequence')"
+        ).bind(subscriber.id, subscriber.email, email.subject).run();
+      }
+    }
+  }
 }
