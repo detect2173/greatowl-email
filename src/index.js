@@ -31,7 +31,7 @@ export default {
     }
 
     if (request.method === "POST" && url.pathname === "/subscribe") {
-      return handleSubscribe(request, env);
+      return handleSubscribe(request, env, ctx);
     }
 
     if (request.method === "GET" && url.pathname === "/unsubscribe") {
@@ -60,7 +60,7 @@ export default {
 
 // ─── Subscribe ────────────────────────────────────────────────────────────────
 
-async function handleSubscribe(request, env) {
+async function handleSubscribe(request, env, ctx) {
   let body;
   try {
     body = await request.json();
