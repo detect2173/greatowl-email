@@ -24,4 +24,4 @@ FB_PAGE_ID   = "593357600524046"
 # wrangler secret put CLAUDE_API_KEY
 # wrangler secret put UNSUBSCRIBE_SECRET  (any random string you choose)
 [triggers]
-crons = ["0 9 * * *", "0 9 * * 0", "0 12 * * *"]
+crons = ["0 9 * * *", "0 12 * * *"]

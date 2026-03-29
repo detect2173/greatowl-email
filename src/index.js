@@ -21,15 +21,15 @@ const CORS_HEADERS = {
 export default {
   async scheduled(event, env, ctx) {
     const cron = event.cron;
-    if (cron === "0 9 * * 0") {
-      // Sunday 9am — generate weekly posts
-      await generateWeeklyPosts(env);
+    if (cron === "0 9 * * *") {
+      const day = new Date().getDay();
+      if (day === 0) {
+        await generateWeeklyPosts(env);
+      } else {
+        await runSequence(env);
+      }
     } else if (cron === "0 12 * * *") {
-      // Daily noon — publish approved posts
       await publishScheduledPosts(env);
-    } else {
-      // Default — run email sequence
-      await runSequence(env);
     }
   },
 
