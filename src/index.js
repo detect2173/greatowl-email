@@ -266,7 +266,7 @@ Requirements:
 - Tell them what to expect (marketing insights, product updates, exclusive offers)
 - End with a clear, encouraging call to action to reply and say hi
 - NO subject line — just the body
-- Include a prominent line near the top after greeting them: "Your free guide is ready to download: https://greatowlmarketing.com/solopreneur-marketing-stack.pdf"
+- Include this exact HTML link near the top after greeting them, on its own line: '<a href="https://greatowlmarketing.com/solopreneur-marketing-stack.pdf" style="color:#c9a84c;font-weight:bold;">Download Your Free Guide →</a>'
 - Sign off with "Warmly," followed by "John" and "Great Owl Marketing" on separate lines. Never use placeholder text like [Your name].
 - Plain text only (no markdown, no HTML tags)`,
           },
@@ -455,7 +455,9 @@ async function runSequence(env) {
 
       if (alreadySent) continue;
 
-      const name = subscriber.first_name || 'there';
+      const name = firstName
+          ? firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase()
+          : 'there';
       const token = await generateToken(subscriber.email, env.UNSUBSCRIBE_SECRET);
       const unsubUrl = `${env.SITE_URL}/unsubscribe?email=${encodeURIComponent(subscriber.email)}&token=${token}`;
 
