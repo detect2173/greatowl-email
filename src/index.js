@@ -20,7 +20,17 @@ const CORS_HEADERS = {
 
 export default {
   async scheduled(event, env, ctx) {
-    await runSequence(env);
+    const cron = event.cron;
+    if (cron === "0 9 * * 0") {
+      // Sunday 9am — generate weekly posts
+      await generateWeeklyPosts(env);
+    } else if (cron === "0 12 * * *") {
+      // Daily noon — publish approved posts
+      await publishScheduledPosts(env);
+    } else {
+      // Default — run email sequence
+      await runSequence(env);
+    }
   },
 
   async fetch(request, env, ctx) {
@@ -48,6 +58,22 @@ export default {
 
     if (request.method === "GET" && url.pathname === "/stats") {
       return handleStats(request, env);
+    }
+
+    if (request.method === "GET" && url.pathname === "/dashboard") {
+      return handleDashboard(request, env);
+    }
+
+    if (request.method === "POST" && url.pathname === "/posts/approve") {
+      return handleApprovePost(request, env);
+    }
+
+    if (request.method === "POST" && url.pathname === "/posts/reject") {
+      return handleRejectPost(request, env);
+    }
+
+    if (request.method === "POST" && url.pathname === "/posts/generate") {
+      return handleGeneratePosts(request, env);
     }
 
     // Serve static assets (landing page)
@@ -488,4 +514,246 @@ async function runSequence(env) {
       }
     }
   }
+}
+
+// ─── Content Generation ───────────────────────────────────────────────────────
+
+async function generateWeeklyPosts(env) {
+  const postTypes = [
+    { type: "educational", prompt: "Write a short, punchy educational social media post about a marketing tip for solopreneurs. Keep it under 200 words. End with a question to drive engagement. No hashtags." },
+    { type: "tool", prompt: `Write a short social media post recommending Systeme.io as a free marketing tool for solopreneurs. Keep it under 150 words. Be genuine and specific about one benefit. Include this link naturally: ${env.SITE_URL}/recommends/systeme. No hashtags.` },
+    { type: "promotional", prompt: `Write a short social media post that drives solopreneurs to download a free guide called "The Solopreneur's Marketing Stack" at ${env.SITE_URL}. Keep it under 150 words. Focus on the value, not the sell. No hashtags.` },
+    { type: "educational", prompt: "Write a short, punchy educational social media post about email marketing for solopreneurs. Keep it under 200 words. End with a question to drive engagement. No hashtags." },
+    { type: "educational", prompt: "Write a short social media post about a common marketing mistake solopreneurs make and how to fix it. Keep it under 200 words. No hashtags." },
+    { type: "promotional", prompt: `Write a short social media post about building an email list from scratch. Mention that ${env.SITE_URL} has a free guide. Keep it under 150 words. No hashtags.` },
+    { type: "tool", prompt: "Write a short social media post recommending Claude AI (claude.ai) as a free writing tool for solopreneurs who need help with marketing content. Keep it under 150 words. Be specific about one use case. No hashtags." },
+  ];
+
+  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+  for (let i = 0; i < postTypes.length; i++) {
+    const { type, prompt } = postTypes[i];
+
+    try {
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": env.CLAUDE_API_KEY,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 300,
+          messages: [{ role: "user", content: prompt }],
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const content = data.content[0]?.text || "";
+
+        // Schedule for the corresponding day next week at noon
+        const scheduledFor = new Date();
+        scheduledFor.setDate(scheduledFor.getDate() + (i + 1));
+        scheduledFor.setHours(12, 0, 0, 0);
+
+        await env.DB.prepare(
+            "INSERT INTO posts (content, platform, status, post_type, scheduled_for) VALUES (?, 'facebook', 'pending', ?, ?)"
+        ).bind(content, type, scheduledFor.toISOString()).run();
+      }
+    } catch (e) {
+      console.error(`Error generating post ${i}:`, e);
+    }
+  }
+
+  // Email notification with posts to review
+  await notifyPostsReady(env);
+}
+
+async function notifyPostsReady(env) {
+  const { results } = await env.DB.prepare(
+      "SELECT * FROM posts WHERE status='pending' ORDER BY scheduled_for ASC LIMIT 7"
+  ).all();
+
+  if (!results.length) return;
+
+  let emailBody = `<h2 style="color:#c9a84c;">Your Weekly Posts Are Ready to Review</h2>`;
+  emailBody += `<p>Go to your dashboard to approve or edit: <a href="${env.SITE_URL}/dashboard?key=${env.BROADCAST_KEY}">${env.SITE_URL}/dashboard</a></p>`;
+
+  for (const post of results) {
+    emailBody += `
+      <div style="border:1px solid #333;padding:16px;margin:16px 0;border-radius:4px;">
+        <p style="color:#888;font-size:12px;">${post.post_type.toUpperCase()} — Scheduled: ${new Date(post.scheduled_for).toDateString()}</p>
+        <p>${post.content.replace(/\n/g, '<br>')}</p>
+        <a href="${env.SITE_URL}/dashboard?key=${env.BROADCAST_KEY}" style="background:#c9a84c;color:#000;padding:8px 16px;text-decoration:none;border-radius:3px;">Review Posts</a>
+      </div>`;
+  }
+
+  await sendViaResend({
+    to: env.FROM_EMAIL,
+    subject: "📋 Your 7 social posts are ready to review",
+    html: emailBody,
+    text: "Your weekly posts are ready. Visit your dashboard to review them.",
+    env,
+  });
+}
+
+async function publishScheduledPosts(env) {
+  const now = new Date().toISOString();
+  const { results } = await env.DB.prepare(
+      "SELECT * FROM posts WHERE status='approved' AND scheduled_for <= ? AND posted_at IS NULL"
+  ).bind(now).all();
+
+  for (const post of results) {
+    const posted = await postToFacebook(post.content, env);
+    if (posted) {
+      await env.DB.prepare(
+          "UPDATE posts SET status='posted', posted_at=? WHERE id=?"
+      ).bind(now, post.id).run();
+    }
+  }
+}
+
+async function postToFacebook(content, env) {
+  try {
+    const response = await fetch(
+        `https://graph.facebook.com/v25.0/${env.FB_PAGE_ID}/feed`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: content,
+            access_token: env.FB_PAGE_TOKEN,
+          }),
+        }
+    );
+    return response.ok;
+  } catch (e) {
+    console.error("Facebook post error:", e);
+    return false;
+  }
+}
+
+// ─── Dashboard ────────────────────────────────────────────────────────────────
+
+async function handleDashboard(request, env) {
+  const url = new URL(request.url);
+  const key = url.searchParams.get("key");
+
+  if (key !== env.BROADCAST_KEY) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+
+  const { results } = await env.DB.prepare(
+      "SELECT * FROM posts ORDER BY created_at DESC LIMIT 20"
+  ).all();
+
+  const rows = results.map(post => `
+    <tr style="border-bottom:1px solid #2e2b26;">
+      <td style="padding:12px;color:#7a7265;font-size:11px;">${post.post_type.toUpperCase()}</td>
+      <td style="padding:12px;color:#f5f0e8;max-width:400px;">${post.content.replace(/\n/g, '<br>')}</td>
+      <td style="padding:12px;">
+        <span style="color:${post.status === 'approved' ? '#4caf50' : post.status === 'posted' ? '#2196f3' : post.status === 'rejected' ? '#f44336' : '#c9a84c'};font-size:12px;text-transform:uppercase;">${post.status}</span>
+      </td>
+      <td style="padding:12px;color:#7a7265;font-size:11px;">${post.scheduled_for ? new Date(post.scheduled_for).toDateString() : '—'}</td>
+      <td style="padding:12px;">
+        ${post.status === 'pending' ? `
+          <button onclick="approvePost(${post.id})" style="background:#c9a84c;color:#000;border:none;padding:6px 12px;cursor:pointer;border-radius:3px;margin-right:4px;">Approve</button>
+          <button onclick="rejectPost(${post.id})" style="background:#333;color:#fff;border:none;padding:6px 12px;cursor:pointer;border-radius:3px;">Reject</button>
+        ` : '—'}
+      </td>
+    </tr>
+  `).join('');
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Great Owl Marketing — Dashboard</title>
+<style>
+  body { background:#0f0e0c; font-family: sans-serif; margin:0; padding:32px; }
+  h1 { color:#c9a84c; margin-bottom:8px; }
+  p { color:#7a7265; margin-bottom:24px; }
+  table { width:100%; border-collapse:collapse; background:#1a1814; border-radius:4px; overflow:hidden; }
+  th { padding:12px; text-align:left; color:#7a7265; font-size:11px; letter-spacing:2px; text-transform:uppercase; border-bottom:1px solid #2e2b26; }
+  .generate-btn { background:#c9a84c; color:#000; border:none; padding:12px 24px; cursor:pointer; border-radius:3px; font-size:14px; font-weight:bold; margin-bottom:24px; }
+  .stats { display:flex; gap:24px; margin-bottom:24px; }
+  .stat { background:#1a1814; padding:16px 24px; border-radius:4px; }
+  .stat-num { color:#c9a84c; font-size:24px; font-weight:bold; }
+  .stat-label { color:#7a7265; font-size:12px; }
+</style>
+</head>
+<body>
+<h1>🦉 Great Owl Marketing Dashboard</h1>
+<p>Review and approve your AI-generated social posts before they go live.</p>
+<button class="generate-btn" onclick="generatePosts()">⚡ Generate This Week's Posts Now</button>
+<table>
+  <thead>
+    <tr>
+      <th>Type</th>
+      <th>Content</th>
+      <th>Status</th>
+      <th>Scheduled</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>${rows}</tbody>
+</table>
+<script>
+  const KEY = '${key}';
+  
+  async function approvePost(id) {
+    await fetch('/posts/approve', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({id, key: KEY})
+    });
+    location.reload();
+  }
+  
+  async function rejectPost(id) {
+    await fetch('/posts/reject', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({id, key: KEY})
+    });
+    location.reload();
+  }
+
+  async function generatePosts() {
+    document.querySelector('.generate-btn').textContent = 'Generating...';
+    await fetch('/posts/generate', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({key: KEY})
+    });
+    location.reload();
+  }
+</script>
+</body>
+</html>`;
+
+  return new Response(html, { headers: { "Content-Type": "text/html" } });
+}
+
+async function handleApprovePost(request, env) {
+  const { id, key } = await request.json();
+  if (key !== env.BROADCAST_KEY) return jsonResponse({ error: "Unauthorized" }, 401);
+  await env.DB.prepare("UPDATE posts SET status='approved' WHERE id=?").bind(id).run();
+  return jsonResponse({ success: true });
+}
+
+async function handleRejectPost(request, env) {
+  const { id, key } = await request.json();
+  if (key !== env.BROADCAST_KEY) return jsonResponse({ error: "Unauthorized" }, 401);
+  await env.DB.prepare("UPDATE posts SET status='rejected' WHERE id=?").bind(id).run();
+  return jsonResponse({ success: true });
+}
+
+async function handleGeneratePosts(request, env) {
+  const { key } = await request.json();
+  if (key !== env.BROADCAST_KEY) return jsonResponse({ error: "Unauthorized" }, 401);
+  await generateWeeklyPosts(env);
+  return jsonResponse({ success: true });
 }

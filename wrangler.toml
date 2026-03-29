@@ -17,10 +17,11 @@ database_id   = "80616e79-f93e-4f40-a121-f503511f07d7"  # fill after: wrangler d
 FROM_EMAIL   = "hello@greatowlmarketing.com"
 FROM_NAME    = "Great Owl Marketing"
 SITE_URL     = "https://greatowlmarketing.com"
+FB_PAGE_ID   = "593357600524046"
 
 # ─── Secrets (set via CLI, never in this file) ─────────────────────────────────
 # wrangler secret put RESEND_API_KEY
 # wrangler secret put CLAUDE_API_KEY
 # wrangler secret put UNSUBSCRIBE_SECRET  (any random string you choose)
 [triggers]
-crons = ["0 9 * * *"]
+crons = ["0 9 * * *", "0 9 * * 0", "0 12 * * *"]
