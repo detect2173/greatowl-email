@@ -106,12 +106,8 @@ async function handleSubscribe(request, env) {
   // Generate unsubscribe token
   const token = await generateToken(email, env.UNSUBSCRIBE_SECRET);
 
-  // Send welcome email (AI-generated, non-blocking)
-  const ctx_promise = sendWelcomeEmail(email, firstName, subscriberId, token, env);
-  // Use waitUntil so the Worker doesn't close before email is sent
-  // (handled in the fetch context — pass ctx if needed)
-
-  await ctx_promise;
+  // Send welcome email non-blocking — don't await it
+  ctx.waitUntil(sendWelcomeEmail(email, firstName, subscriberId, token, env));
 
   return jsonResponse({
     message: "You're on the list! Check your inbox for a welcome email.",
