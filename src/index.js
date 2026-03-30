@@ -74,7 +74,7 @@ export default {
         }
 
         if (request.method === "POST" && url.pathname === "/posts/generate") {
-            return handleGeneratePosts(request, env);
+            return handleGeneratePosts(request, env, ctx);
         }
 
         // Serve static assets (landing page)
@@ -845,9 +845,9 @@ async function handleRejectPost(request, env) {
     return jsonResponse({success: true});
 }
 
-async function handleGeneratePosts(request, env) {
-    const {key} = await request.json();
-    if (key !== env.BROADCAST_KEY) return jsonResponse({error: "Unauthorized"}, 401);
-    await generateWeeklyPosts(env);
-    return jsonResponse({success: true});
+async function handleGeneratePosts(request, env, ctx) {
+    const { key } = await request.json();
+    if (key !== env.BROADCAST_KEY) return jsonResponse({ error: "Unauthorized" }, 401);
+    ctx.waitUntil(generateWeeklyPosts(env));
+    return jsonResponse({ success: true, message: "Generation started in background" });
 }
