@@ -716,9 +716,15 @@ async function generatePostImage(postContent, postType, env) {
 
         if (!imageResponse) return null;
 
-        // Store in R2
+        // Store in R2 - handle different response formats
         const imageKey = `posts/${Date.now()}-${Math.random().toString(36).slice(2)}.png`;
-        await env.IMAGES.put(imageKey, imageResponse, {
+        const imageBuffer = imageResponse instanceof Response
+            ? await imageResponse.arrayBuffer()
+            : imageResponse instanceof ArrayBuffer
+                ? imageResponse
+                : new Uint8Array(imageResponse).buffer;
+
+        await env.IMAGES.put(imageKey, imageBuffer, {
             httpMetadata: { contentType: "image/png" },
         });
 
