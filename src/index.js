@@ -573,6 +573,7 @@ async function generateWeeklyPosts(env) {
             const content = data.content[0]?.text || "";
 
             const scheduledFor = new Date();
+            scheduledFor.setTime(scheduledFor.getTime() - (4 * 60 * 60 * 1000)); // offset to Eastern
             scheduledFor.setDate(scheduledFor.getDate() + (i + 1));
             scheduledFor.setHours(12, 0, 0, 0);
 
