@@ -576,14 +576,17 @@ async function generateWeeklyPosts(env) {
                 const data = await response.json();
                 const content = data.content[0]?.text || "";
 
+                // Generate image for this post
+                const imageUrl = await generatePostImage(content, type, env);
+
                 // Schedule for the corresponding day next week at noon
                 const scheduledFor = new Date();
                 scheduledFor.setDate(scheduledFor.getDate() + (i + 1));
                 scheduledFor.setHours(12, 0, 0, 0);
 
                 await env.DB.prepare(
-                    "INSERT INTO posts (content, platform, status, post_type, scheduled_for) VALUES (?, 'facebook', 'pending', ?, ?)"
-                ).bind(content, type, scheduledFor.toISOString()).run();
+                    "INSERT INTO posts (content, platform, status, post_type, scheduled_for, image_url) VALUES (?, 'facebook', 'pending', ?, ?, ?)"
+                ).bind(content, type, scheduledFor.toISOString(), imageUrl).run();
             }
         } catch (e) {
             console.error(`Error generating post ${i}:`, e);
@@ -644,7 +647,7 @@ async function publishScheduledPosts(env) {
     const {results} = await env.DB.prepare("SELECT * FROM posts WHERE status='approved' AND scheduled_for <= ? AND posted_at IS NULL").bind(now).all();
 
     for (const post of results) {
-        const posted = await postToFacebook(post.content, env);
+        const posted = await postToFacebook(post.content, post.image_url, env);
         if (posted) {
             await env.DB.prepare(
                 "UPDATE posts SET status='posted', posted_at=? WHERE id=?"
@@ -653,23 +656,76 @@ async function publishScheduledPosts(env) {
     }
 }
 
-async function postToFacebook(content, env) {
+async function postToFacebook(content, imageUrl, env) {
     try {
+        const body = {
+            message: content,
+            access_token: env.FB_PAGE_TOKEN,
+        };
+
+        if (imageUrl) {
+            body.link = imageUrl;
+        }
+
         const response = await fetch(
             `https://graph.facebook.com/v25.0/${env.FB_PAGE_ID}/feed`,
             {
                 method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({
-                    message: content,
-                    access_token: env.FB_PAGE_TOKEN,
-                }),
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body),
             }
         );
         return response.ok;
     } catch (e) {
         console.error("Facebook post error:", e);
         return false;
+    }
+}
+
+// ─── Image Generation ─────────────────────────────────────────────────────────
+
+async function generatePostImage(postContent, postType, env) {
+    try {
+        // Ask Claude for an image prompt
+        const promptResponse = await fetch("https://api.anthropic.com/v1/messages", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "x-api-key": env.CLAUDE_API_KEY,
+                "anthropic-version": "2023-06-01",
+            },
+            body: JSON.stringify({
+                model: "claude-sonnet-4-20250514",
+                max_tokens: 100,
+                messages: [{
+                    role: "user",
+                    content: `Write a short image generation prompt (under 50 words) for a professional marketing social media post image. The post is about: "${postContent.slice(0, 200)}". Style: modern, professional, clean. Dark background with gold accents. No text in the image. Abstract or conceptual visual only. Return only the prompt, nothing else.`
+                }],
+            }),
+        });
+
+        if (!promptResponse.ok) return null;
+        const promptData = await promptResponse.json();
+        const imagePrompt = promptData.content[0]?.text || "";
+
+        // Generate image with Cloudflare AI
+        const imageResponse = await env.AI.run(
+            "@cf/black-forest-labs/flux-1-schnell",
+            { prompt: imagePrompt }
+        );
+
+        if (!imageResponse) return null;
+
+        // Store in R2
+        const imageKey = `posts/${Date.now()}-${Math.random().toString(36).slice(2)}.png`;
+        await env.IMAGES.put(imageKey, imageResponse, {
+            httpMetadata: { contentType: "image/png" },
+        });
+
+        return `https://pub-${env.R2_PUBLIC_URL}.r2.dev/${imageKey}`;
+    } catch (e) {
+        console.error("Image generation error:", e);
+        return null;
     }
 }
 
