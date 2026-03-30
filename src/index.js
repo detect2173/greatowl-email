@@ -553,47 +553,35 @@ async function generateWeeklyPosts(env) {
     ];
 
     const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    await Promise.allSettled(postTypes.map(async ({ type, prompt }, i) => {
+        const response = await fetch("https://api.anthropic.com/v1/messages", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "x-api-key": env.CLAUDE_API_KEY,
+                "anthropic-version": "2023-06-01",
+            },
+            body: JSON.stringify({
+                model: "claude-sonnet-4-20250514",
+                max_tokens: 300,
+                messages: [{ role: "user", content: prompt }],
+            }),
+        });
 
-    for (let i = 0; i < postTypes.length; i++) {
-        const {type, prompt} = postTypes[i];
+        if (response.ok) {
+            const data = await response.json();
+            const content = data.content[0]?.text || "";
 
-        try {
-            const response = await fetch("https://api.anthropic.com/v1/messages", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "x-api-key": env.CLAUDE_API_KEY,
-                    "anthropic-version": "2023-06-01",
-                },
-                body: JSON.stringify({
-                    model: "claude-sonnet-4-20250514",
-                    max_tokens: 300,
-                    messages: [{role: "user", content: prompt}],
-                }),
-            });
+            const scheduledFor = new Date();
+            scheduledFor.setDate(scheduledFor.getDate() + (i + 1));
+            scheduledFor.setHours(12, 0, 0, 0);
 
-            if (response.ok) {
-                const data = await response.json();
-                const content = data.content[0]?.text || "";
-
-                // Generate image for this post
-                const imageUrl = await generatePostImage(content, type, env);
-
-                // Schedule for the corresponding day next week at noon
-                const scheduledFor = new Date();
-                scheduledFor.setDate(scheduledFor.getDate() + (i + 1));
-                scheduledFor.setHours(12, 0, 0, 0);
-
-                await env.DB.prepare(
-                    "INSERT INTO posts (content, platform, status, post_type, scheduled_for, image_url) VALUES (?, 'facebook', 'pending', ?, ?, ?)"
-                ).bind(content, type, scheduledFor.toISOString(), imageUrl).run();
-            }
-        } catch (e) {
-            console.error(`Error generating post ${i}:`, e);
+            await env.DB.prepare(
+                "INSERT INTO posts (content, platform, status, post_type, scheduled_for) VALUES (?, 'facebook', 'pending', ?, ?)"
+            ).bind(content, type, scheduledFor.toISOString()).run();
         }
-    }
+    }));
 
-    // Email notification with posts to review
     await notifyPostsReady(env);
 }
 
