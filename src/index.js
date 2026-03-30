@@ -822,13 +822,17 @@ async function handleDashboard(request, env) {
   }
 
   async function generatePosts() {
-    document.querySelector('.generate-btn').textContent = 'Generating...';
+    const btn = document.querySelector('.generate-btn');
+    btn.disabled = true;
+    btn.style.opacity = '0.5';
+    btn.style.cursor = 'not-allowed';
+    btn.textContent = '⏳ Generating... (reloading in 45s)';
     await fetch('/posts/generate', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({key: KEY})
     });
-    location.reload();
+    setTimeout(() => location.reload(), 45000);
   }
 </script>
 </body>
