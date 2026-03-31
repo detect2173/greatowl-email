@@ -575,7 +575,7 @@ async function generateWeeklyPosts(env) {
             scheduledFor.setTime(scheduledFor.getTime() - (4 * 60 * 60 * 1000)); // offset to Eastern
             scheduledFor.setDate(scheduledFor.getDate() + (i + 1));
             scheduledFor.setHours(12, 0, 0, 0);
-            const imageUrl = await generateImage(content, env);
+            const imageUrl = await generatePostImage(content, type, env);
             await env.DB.prepare(
                 "INSERT INTO posts (content, platform, status, post_type, scheduled_for, image_url) VALUES (?, 'facebook', 'pending', ?, ?, ?)"
             ).bind(content, type, scheduledFor.toISOString(), imageUrl).run();
